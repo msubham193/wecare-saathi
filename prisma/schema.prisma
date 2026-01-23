@@ -1,0 +1,295 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CITIZEN
+  OFFICER
+  ADMIN
+}
+
+enum CaseStatus {
+  CREATED
+  ASSIGNED
+  ACKNOWLEDGED
+  EN_ROUTE
+  ON_SCENE
+  ACTION_TAKEN
+  CLOSED
+}
+
+enum OfficerStatus {
+  AVAILABLE
+  ON_DUTY
+  BUSY
+  OFF_DUTY
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  RETRY
+}
+
+model User {
+  id            String    @id @default(uuid())
+  firebaseUid   String?   @unique
+  phone         String?   @unique
+  googleId      String?   @unique
+  name          String
+  email         String?
+  avatar        String?
+  age           Int?
+  profileCompleted Boolean @default(false)
+  role          UserRole
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  citizenProfile   CitizenProfile?
+  officerProfile   OfficerProfile?
+  adminProfile     AdminProfile?
+  auditLogs        AuditLog[]
+  
+  @@index([firebaseUid])
+  @@index([phone])
+  @@index([googleId])
+  @@index([email])
+}
+
+model CitizenProfile {
+  id              String    @id @default(uuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  address         String?
+  emergencyNote   String?
+  bloodGroup      String?
+  medicalInfo     String?
+  
+  guardians       Guardian[]
+  sosCases        SosCase[]
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([userId])
+}
+
+model Guardian {
+  id              String    @id @default(uuid())
+  citizenId       String
+  citizen         CitizenProfile @relation(fields: [citizenId], references: [id], onDelete: Cascade)
+  
+  name            String
+  phone           String
+  relation        String
+  isPrimary       Boolean   @default(false)
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([citizenId])
+  @@index([phone])
+}
+
+model OfficerProfile {
+  id              String         @id @default(uuid())
+  userId          String         @unique
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  badgeNumber     String         @unique
+  designation     String
+  station         String
+  status          OfficerStatus  @default(AVAILABLE)
+  
+  currentLat      Float?
+  currentLng      Float?
+  lastLocationUpdate DateTime?
+  
+  assignedCases   SosCase[]
+  locationLogs    OfficerLocationLog[]
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([userId])
+  @@index([badgeNumber])
+  @@index([status])
+}
+
+model AdminProfile {
+  id              String    @id @default(uuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  department      String
+  accessLevel     Int       @default(1)
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([userId])
+}
+
+model SosCase {
+  id              String        @id @default(uuid())
+  caseNumber      String        @unique
+  
+  // Citizen Info
+  citizenId       String
+  citizen         CitizenProfile @relation(fields: [citizenId], references: [id])
+  
+  // Location
+  latitude        Float
+  longitude       Float
+  accuracy        Float?
+  address         String?
+  
+  // Assignment
+  officerId       String?
+  officer         OfficerProfile? @relation(fields: [officerId], references: [id])
+  assignedAt      DateTime?
+  assignedBy      String?
+  
+  // Status
+  status          CaseStatus     @default(CREATED)
+  priority        Int            @default(1)
+  
+  // Details
+  description     String?
+  closureNotes    String?
+  closedAt        DateTime?
+  
+  // Video Evidence (10-second recording)
+  videoUrl        String?
+  videoFileName   String?
+  videoDuration   Float?       // Duration in seconds
+  videoUploadedAt DateTime?
+  
+  // Relations
+  statusLogs      CaseStatusLog[]
+  evidence        Evidence[]
+  notifications   Notification[]
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([citizenId])
+  @@index([officerId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([caseNumber])
+}
+
+model CaseStatusLog {
+  id              String     @id @default(uuid())
+  caseId          String
+  case            SosCase    @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  
+  fromStatus      CaseStatus?
+  toStatus        CaseStatus
+  changedBy       String
+  notes           String?
+  timestamp       DateTime   @default(now())
+  
+  @@index([caseId])
+  @@index([timestamp])
+}
+
+model Evidence {
+  id              String    @id @default(uuid())
+  caseId          String
+  case            SosCase   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  
+  fileUrl         String
+  fileType        String
+  fileName        String
+  fileSize        Int
+  
+  // Metadata
+  capturedAt      DateTime  @default(now())
+  latitude        Float?
+  longitude       Float?
+  uploadedBy      String
+  
+  // Security
+  virusScanStatus String?   @default("pending")
+  accessLevel     String    @default("restricted")
+  
+  createdAt       DateTime  @default(now())
+  
+  @@index([caseId])
+}
+
+model OfficerLocationLog {
+  id              String         @id @default(uuid())
+  officerId       String
+  officer         OfficerProfile @relation(fields: [officerId], references: [id], onDelete: Cascade)
+  
+  latitude        Float
+  longitude       Float
+  accuracy        Float?
+  caseId          String?
+  
+  timestamp       DateTime       @default(now())
+  
+  @@index([officerId])
+  @@index([caseId])
+  @@index([timestamp])
+}
+
+model Notification {
+  id              String             @id @default(uuid())
+  caseId          String?
+  case            SosCase?           @relation(fields: [caseId], references: [id])
+  
+  recipient       String
+  type            String
+  template        String
+  
+  status          NotificationStatus @default(PENDING)
+  message         String
+  metadata        Json?
+  
+  sentAt          DateTime?
+  failureReason   String?
+  retryCount      Int                @default(0)
+  
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  
+  @@index([caseId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  
+  action          String
+  resource        String
+  resourceId      String?
+  
+  ipAddress       String?
+  userAgent       String?
+  metadata        Json?
+  
+  timestamp       DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([action])
+  @@index([timestamp])
+}

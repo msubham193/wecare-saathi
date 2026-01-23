@@ -1,0 +1,469 @@
+{
+  "info": {
+    "name": "We Care - Saathi API",
+    "description": "SOS Emergency Response Backend API Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["health"]
+        }
+      }
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('accessToken', response.data.tokens.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', response.data.tokens.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firebaseToken\": \"YOUR_FIREBASE_TOKEN_HERE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "refresh"]
+            }
+          }
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "SOS - Citizen",
+      "item": [
+        {
+          "name": "Create SOS",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 20.2961,\n  \"longitude\": 85.8245,\n  \"accuracy\": 10,\n  \"description\": \"Emergency situation - need immediate help\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sos/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["sos", "create"]
+            }
+          }
+        },
+        {
+          "name": "Get SOS Case by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sos/:caseId",
+              "host": ["{{baseUrl}}"],
+              "path": ["sos", ":caseId"],
+              "variable": [
+                {
+                  "key": "caseId",
+                  "value": "CASE_ID_HERE"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Case Status History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sos/:caseId/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["sos", ":caseId", "status"],
+              "variable": [
+                {
+                  "key": "caseId",
+                  "value": "CASE_ID_HERE"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get My Cases",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sos/citizen/cases?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["sos", "citizen", "cases"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Officer",
+      "item": [
+        {
+          "name": "Get Assigned Cases",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/officer/cases?status=ASSIGNED",
+              "host": ["{{baseUrl}}"],
+              "path": ["officer", "cases"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "ASSIGNED"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Case Status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACKNOWLEDGED\",\n  \"notes\": \"On my way to the location\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/officer/case/:caseId/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["officer", "case", ":caseId", "status"],
+              "variable": [
+                {
+                  "key": "caseId",
+                  "value": "CASE_ID_HERE"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Location",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 20.2955,\n  \"longitude\": 85.8240,\n  \"accuracy\": 5,\n  \"caseId\": \"CASE_ID_HERE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/officer/location",
+              "host": ["{{baseUrl}}"],
+              "path": ["officer", "location"]
+            }
+          }
+        },
+        {
+          "name": "Get Officer Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/officer/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["officer", "profile"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Get All Cases",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/cases?status=ASSIGNED&page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "cases"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "ASSIGNED"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Assign Officer to Case",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"officerId\": \"OFFICER_ID_HERE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/case/:caseId/assign",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "case", ":caseId", "assign"],
+              "variable": [
+                {
+                  "key": "caseId",
+                  "value": "CASE_ID_HERE"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Force Close Case",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CLOSED\",\n  \"notes\": \"Case resolved - closing manually\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/case/:caseId/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "case", ":caseId", "status"],
+              "variable": [
+                {
+                  "key": "caseId",
+                  "value": "CASE_ID_HERE"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Officers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/officers",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "officers"]
+            }
+          }
+        },
+        {
+          "name": "Get Active Officer Locations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/officers/active-locations",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "officers", "active-locations"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
