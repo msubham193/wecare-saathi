@@ -1,6 +1,5 @@
 import { Queue, Worker, Job } from 'bullmq';
 import { config } from '../config';
-import redis from '../config/redis';
 import { logger } from '../config/logger';
 import { NotificationPayload } from '../types';
 import { sendSMS } from '../modules/notifications/sms.provider';
@@ -24,7 +23,7 @@ export const notificationQueue = new Queue('notifications', {
 const notificationWorker = new Worker(
   'notifications',
   async (job: Job<NotificationPayload>) => {
-    const { recipient, type, template, data, caseId } = job.data;
+    const { recipient, type, data, caseId } = job.data;
     
     logger.info(`Processing notification: ${type} to ${recipient}`);
     

@@ -61,7 +61,7 @@ app.use(passport.initialize());
 app.use(globalRateLimiter);
 
 // ========== Request Logging ==========
-app.use((req, res, next) => {
+app.use((req, _res, next) => {
   logger.info(`${req.method} ${req.path}`, {
     ip: req.ip,
     userAgent: req.headers['user-agent'],
@@ -76,7 +76,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerOption
 app.use('/api/v1', routes);
 
 // Root endpoint
-app.get('/', (req, res) => {
+app.get('/', (_req, res) => {
   res.json({
     success: true,
     message: 'We Care - Saathi SOS Emergency Response API',

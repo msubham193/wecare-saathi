@@ -1,7 +1,7 @@
 import prisma from '../../config/database';
 import { config } from '../../config';
 import { logger } from '../../config/logger';
-import { calculateDistance, sortByDistance } from '../../utils/distance-calculator';
+import { sortByDistance } from '../../utils/distance-calculator';
 import { OfficerStatus } from '@prisma/client';
 import { ERROR_MESSAGES } from '../../utils/constants';
 

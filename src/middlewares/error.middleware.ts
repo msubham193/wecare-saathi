@@ -10,7 +10,7 @@ export const errorHandler = (
   error: any,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ): void => {
   logger.error('Unhandled error:', {
     error: error.message,
@@ -88,7 +88,7 @@ function handlePrismaError(error: any, res: Response): void {
 export const notFoundHandler = (
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ): void => {
   ResponseUtil.notFound(res, `Route ${req.method} ${req.path} not found`);
 };

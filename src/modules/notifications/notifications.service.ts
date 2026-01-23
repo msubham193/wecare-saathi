@@ -86,6 +86,11 @@ export class NotificationsService {
         return;
       }
       
+      if (!officer.user.phone) {
+        logger.warn(`Officer ${officerId} has no phone number, skipping notification`);
+        return;
+      }
+      
       const message = NOTIFICATION_MESSAGES.CASE_ASSIGNED_OFFICER(sosCase.caseNumber);
       
       // Create notification record
@@ -142,10 +147,15 @@ export class NotificationsService {
         status
       );
       
+      const recipientPhone = sosCase.citizen.user.phone;
+      if (!recipientPhone) {
+        return;
+      }
+      
       await prisma.notification.create({
         data: {
           caseId,
-          recipient: sosCase.citizen.user.phone,
+          recipient: recipientPhone,
           type: 'sms',
           template: NOTIFICATION_TEMPLATES.STATUS_UPDATE_CITIZEN,
           message,
@@ -153,7 +163,7 @@ export class NotificationsService {
       });
       
       await queueNotification({
-        recipient: sosCase.citizen.user.phone,
+        recipient: recipientPhone,
         type: 'sms',
         template: NOTIFICATION_TEMPLATES.STATUS_UPDATE_CITIZEN,
         data: { message },

@@ -82,12 +82,12 @@ export class SOSStateMachine {
     
     // Only officers can acknowledge, en route, on scene, action taken
     if (
-      [
+      ([
         CaseStatus.ACKNOWLEDGED,
         CaseStatus.EN_ROUTE,
         CaseStatus.ON_SCENE,
         CaseStatus.ACTION_TAKEN,
-      ].includes(newStatus) &&
+      ] as CaseStatus[]).includes(newStatus) &&
       !context.isOfficer &&
       !context.isAdmin
     ) {

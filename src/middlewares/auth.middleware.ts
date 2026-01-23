@@ -4,7 +4,6 @@ import { AuthRequest } from '../types';
 import { config } from '../config';
 import { ResponseUtil } from '../utils/response.util';
 import { ERROR_MESSAGES, CACHE_KEYS } from '../utils/constants';
-import { verifyFirebaseToken } from '../config/firebase';
 import prisma from '../config/database';
 import redis from '../config/redis';
 import { logger } from '../config/logger';
@@ -80,7 +79,7 @@ export const authenticate = async (
  */
 export const optionalAuth = async (
   req: AuthRequest,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
@@ -92,7 +91,7 @@ export const optionalAuth = async (
     }
     
     const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, config.jwt.secret) as JWTPayload;
+    const decoded = jwt.verify(token, config.jwt.secret as string) as JWTPayload;
     
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
@@ -118,14 +117,17 @@ export const optionalAuth = async (
  * Generate JWT tokens
  */
 export const generateTokens = (payload: JWTPayload) => {
-  const accessToken = jwt.sign(payload, config.jwt.secret, {
-    expiresIn: config.jwt.accessExpiry,
+  // Ensure payload has clean values (no nulls)
+  const cleanPayload = JSON.parse(JSON.stringify(payload));
+  
+  const accessToken = jwt.sign(cleanPayload, config.jwt.secret as string, {
+    expiresIn: config.jwt.accessExpiry as any,
   });
   
   const refreshToken = jwt.sign(
     { userId: payload.userId },
-    config.jwt.secret,
-    { expiresIn: config.jwt.refreshExpiry }
+    config.jwt.secret as string,
+    { expiresIn: config.jwt.refreshExpiry as any }
   );
   
   return { accessToken, refreshToken };

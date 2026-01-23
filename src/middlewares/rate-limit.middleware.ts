@@ -1,7 +1,7 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
 import { config } from '../config';
-import redis, { redisHelpers } from '../config/redis';
+import { redisHelpers } from '../config/redis';
 import { ResponseUtil } from '../utils/response.util';
 import { ERROR_MESSAGES, RATE_LIMIT_KEYS } from '../utils/constants';
 import { AuthRequest } from '../types';

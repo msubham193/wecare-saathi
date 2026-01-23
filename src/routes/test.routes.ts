@@ -62,7 +62,7 @@ router.post('/test-login', async (req, res) => {
     // Generate tokens
     const tokens = generateTokens({
       userId: user.id,
-      firebaseUid: user.firebaseUid,
+      firebaseUid: user.firebaseUid || undefined,
       role: user.role,
       email: user.email || undefined,
     });

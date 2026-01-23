@@ -40,7 +40,7 @@ export const auditLog = (action: string, resource: string) => {
         }
         
         // Call original end
-        return originalEnd.apply(this, args);
+        return originalEnd.apply(this, args as [any, any, any]);
       };
       
       next();

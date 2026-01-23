@@ -9,7 +9,7 @@ import { config } from '../config';
 const router = Router();
 
 // Health check
-router.get('/health', (req, res) => {
+router.get('/health', (_req, res) => {
   res.json({
     success: true,
     message: 'We Care - Saathi Backend is running',

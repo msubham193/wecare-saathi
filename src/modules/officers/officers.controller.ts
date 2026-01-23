@@ -80,7 +80,7 @@ export class OfficersController {
    * GET /admin/officers
    * Get all officers (admin)
    */
-  getAllOfficers = asyncHandler(async (req: AuthRequest, res: Response) => {
+  getAllOfficers = asyncHandler(async (_req: AuthRequest, res: Response) => {
     const officers = await prisma.officerProfile.findMany({
       include: {
         user: {
@@ -106,7 +106,7 @@ export class OfficersController {
    * GET /admin/officers/active-locations
    * Get all active officer locations (admin)
    */
-  getActiveLocations = asyncHandler(async (req: AuthRequest, res: Response) => {
+  getActiveLocations = asyncHandler(async (_req: AuthRequest, res: Response) => {
     const locations = await locationTracker.getActiveOfficerLocations();
     
     return ResponseUtil.success(res, locations);

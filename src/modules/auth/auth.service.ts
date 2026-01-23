@@ -67,7 +67,7 @@ export class AuthService {
       // Generate JWT tokens
       const payload: JWTPayload = {
         userId: user.id,
-        firebaseUid: user.firebaseUid,
+        firebaseUid: user.firebaseUid || undefined,
         role: user.role,
         email: user.email || undefined,
       };
