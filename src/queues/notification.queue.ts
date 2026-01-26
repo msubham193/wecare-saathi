@@ -7,16 +7,21 @@ import { sendWhatsApp } from '../modules/notifications/whatsapp.provider';
 import { sendFCMNotification } from '../config/firebase';
 import prisma from '../config/database';
 
+// Parse Redis URL properly
+const redisUrl = config.redis.url.startsWith('redis://') 
+  ? config.redis.url 
+  : `redis://${config.redis.url}`;
+const parsedUrl = new URL(redisUrl);
+
+const redisConnection = {
+  host: parsedUrl.hostname || 'localhost',
+  port: parseInt(parsedUrl.port || '6379'),
+  password: config.redis.password || undefined,
+};
+
 // Create notification queue
 export const notificationQueue = new Queue('notifications', {
-  connection: {
-    host: config.redis.url.includes('://') 
-      ? config.redis.url.split('://')[1].split(':')[0] 
-      : 'localhost',
-    port: config.redis.url.includes(':') 
-      ? parseInt(config.redis.url.split(':').pop() || '6379') 
-      : 6379,
-  },
+  connection: redisConnection,
 });
 
 // Notification worker
@@ -94,14 +99,7 @@ const notificationWorker = new Worker(
     }
   },
   {
-    connection: {
-      host: config.redis.url.includes('://') 
-        ? config.redis.url.split('://')[1].split(':')[0] 
-        : 'localhost',
-      port: config.redis.url.includes(':') 
-        ? parseInt(config.redis.url.split(':').pop() || '6379') 
-        : 6379,
-    },
+    connection: redisConnection,
     concurrency: 5,
     limiter: {
       max: 10,
