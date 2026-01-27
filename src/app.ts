@@ -50,8 +50,8 @@ app.use(cors({
 }));
 
 // ========== Body Parser ==========
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '150mb' }));
+app.use(express.urlencoded({ extended: true, limit: '150mb' }));
 
 // ========== Passport Configuration ==========
 configureGoogleStrategy();
