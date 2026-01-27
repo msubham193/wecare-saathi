@@ -65,7 +65,7 @@ export const config = {
   },
   
   rateLimit: {
-    sosPerHour: parseInt(process.env.SOS_RATE_LIMIT_PER_HOUR || '3', 10),
+    sosPerHour: parseInt(process.env.SOS_RATE_LIMIT_PER_HOUR || '100', 10),
     loginPerMinute: parseInt(process.env.LOGIN_RATE_LIMIT_PER_MINUTE || '5', 10),
     globalPer15Min: parseInt(process.env.GLOBAL_RATE_LIMIT_PER_15MIN || '100', 10),
   },
