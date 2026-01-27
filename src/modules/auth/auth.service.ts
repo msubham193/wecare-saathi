@@ -33,6 +33,38 @@ export class AuthService {
         },
       });
 
+      // If user not found by Firebase UID, check if exists by email to prevent duplicates
+      if (!user && email) {
+        const existingUser = await prisma.user.findFirst({
+          where: { email },
+          include: {
+            citizenProfile: true,
+            officerProfile: true,
+            adminProfile: true,
+          },
+        });
+
+        if (existingUser) {
+          // Update existing user with new Firebase UID
+          user = await prisma.user.update({
+            where: { id: existingUser.id },
+            data: {
+              firebaseUid,
+              // Update name/avatar if not present?
+              // For now, just ensure the link is established.
+            },
+            include: {
+              citizenProfile: true,
+              officerProfile: true,
+              adminProfile: true,
+            },
+          });
+          logger.info(
+            `Linked existing user ${user.id} to new Firebase UID: ${firebaseUid}`,
+          );
+        }
+      }
+
       // Create user if doesn't exist (default to CITIZEN role)
       if (!user) {
         user = await prisma.user.create({
