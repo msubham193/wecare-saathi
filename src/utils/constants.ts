@@ -122,15 +122,18 @@ export const DEFAULTS = {
 } as const;
 
 // Case number generator
-let caseCounter = 0;
-
+// Use timestamp + random components to ensure uniqueness across server restarts
 export const generateCaseNumber = (): string => {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
-  caseCounter = (caseCounter + 1) % 1000000; // Reset after 999999
-  const sequence = String(caseCounter).padStart(6, '0');
-  return `SOS-${year}-${month}-${sequence}`;
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  const random = Math.floor(Math.random() * 9000 + 1000); // 4 digit random
+  
+  return `SOS-${year}${month}${day}-${hours}${minutes}${seconds}-${random}`;
 };
 
 // Error messages
