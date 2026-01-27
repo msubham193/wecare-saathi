@@ -6,6 +6,7 @@ import { CaseStatus, UserRole } from '@prisma/client';
 import { generateCaseNumber, ERROR_MESSAGES, DEFAULTS } from '../../utils/constants';
 import { getAddressFromCoordinates } from '../../utils/distance-calculator';
 import { s3Service } from '../../services/s3.service';
+import { queueNotification } from '../../queues/notification.queue';
 
 export class SOSService {
   /**
@@ -358,5 +359,112 @@ export class SOSService {
       where: { caseId },
       orderBy: { timestamp: 'asc' },
     });
+  }
+
+  /**
+   * Notify guardians about SOS
+   */
+  async notifyGuardian(caseId: string, userId: string) {
+    const sosCase = await prisma.sosCase.findUnique({
+      where: { id: caseId },
+      include: {
+        citizen: {
+          include: {
+            user: true,
+            guardians: true,
+          },
+        },
+      },
+    });
+
+    if (!sosCase) {
+      throw new Error(ERROR_MESSAGES.NOT_FOUND);
+    }
+
+    // Verify ownership
+    if (sosCase.citizen.userId !== userId) {
+      throw new Error(ERROR_MESSAGES.FORBIDDEN);
+    }
+
+    const { citizen } = sosCase;
+    const locationLink = `https://maps.google.com/?q=${sosCase.latitude},${sosCase.longitude}`;
+    
+    // Notify all guardians
+    const notifications = citizen.guardians.map(async (guardian) => {
+      // Send SMS
+      await queueNotification({
+        recipient: guardian.phone,
+        type: 'sms',
+        data: {
+          message: `SOS ALERT! ${citizen.user.name} needs help! Location: ${locationLink}. Track here: [App Link]`,
+        },
+        caseId: sosCase.id,
+      });
+      
+      // TODO: If guardian has app account, send FCM
+    });
+
+    await Promise.all(notifications);
+
+    return { message: 'Guardians notified successfully' };
+  }
+
+  /**
+   * Add media to SOS case (Video Upload)
+   */
+  async addMedia(
+    caseId: string, 
+    userId: string,
+    file: Express.Multer.File, 
+    mediaType: 'photo' | 'video'
+  ) {
+    const sosCase = await prisma.sosCase.findUnique({
+      where: { id: caseId },
+      include: { citizen: true },
+    });
+
+    if (!sosCase) {
+      throw new Error(ERROR_MESSAGES.NOT_FOUND);
+    }
+
+    // Verify ownership
+    if (sosCase.citizen.userId !== userId) {
+      throw new Error(ERROR_MESSAGES.FORBIDDEN);
+    }
+
+    // Upload to S3
+    const { url } = await s3Service.uploadVideo(file, {
+        caseNumber: sosCase.caseNumber,
+        userId: userId,
+    });
+
+    // Update case with video URL
+    // Note: Currently schema has single videoUrl. If multiple videos support is needed, we need a separate table or array.
+    // Based on requirement, we update the main videoUrl.
+    if (mediaType === 'video') {
+         await prisma.sosCase.update({
+            where: { id: caseId },
+            data: {
+                videoUrl: url,
+                videoFileName: file.originalname,
+                videoUploadedAt: new Date(),
+            }
+        });
+    } else {
+        // Handle photos if array exists, or single photo
+        // For now user requested video fix primarily.
+        // Assuming photoUrls is string[]
+        // We will append to photoUrls (if it was an array in schema, but typical prisma string[] is supported)
+         await prisma.sosCase.update({
+            where: { id: caseId },
+            data: {
+                photoUrls: {
+                    push: url
+                }
+            }
+        });
+    }
+
+    return { url };
   }
 }

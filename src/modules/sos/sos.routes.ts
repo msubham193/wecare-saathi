@@ -35,6 +35,30 @@ router.post(
 );
 
 /**
+ * POST /sos/notify-guardian
+ * Notify guardian manually
+ */
+router.post(
+  '/notify-guardian',
+  authenticate,
+  requireCitizen,
+  sosController.notifyGuardian
+);
+
+/**
+ * POST /sos/upload-media
+ * Upload additional media for SOS
+ */
+router.post(
+  '/upload-media',
+  authenticate,
+  requireCitizen,
+  uploadSOSVideo, // Reusing video upload middleware
+  handleUploadError,
+  sosController.uploadMedia
+);
+
+/**
  * GET /citizen/cases
  * Get citizen's SOS cases
  */

@@ -166,4 +166,50 @@ export class SOSController {
     
     return ResponseUtil.success(res, updated, 'Officer assigned successfully');
   });
+
+  /**
+   * POST /sos/notify-guardian
+   * Notify guardian about SOS case
+   */
+  notifyGuardian = asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (!req.user) {
+      return ResponseUtil.unauthorized(res);
+    }
+    
+    const { caseId } = req.body;
+    
+    if (!caseId) {
+       return ResponseUtil.badRequest(res, 'Case ID is required');
+    }
+
+    const result = await sosService.notifyGuardian(caseId, req.user.id);
+    
+    return ResponseUtil.success(res, result);
+  });
+
+  /**
+   * POST /sos/upload-media
+   * Upload media for SOS case
+   */
+  uploadMedia = asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (!req.user) {
+      return ResponseUtil.unauthorized(res);
+    }
+    
+    const { caseId, mediaType } = req.body;
+    const file = req.file;
+
+    if (!caseId || !file) {
+       return ResponseUtil.badRequest(res, 'Case ID and file are required');
+    }
+
+    const result = await sosService.addMedia(
+        caseId, 
+        req.user.id, 
+        file, 
+        mediaType as 'photo' | 'video' || 'video'
+    );
+    
+    return ResponseUtil.success(res, result);
+  });
 }
