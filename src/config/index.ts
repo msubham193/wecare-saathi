@@ -77,7 +77,7 @@ export const config = {
   fileUpload: {
     maxSizeMB: parseInt(process.env.MAX_FILE_SIZE_MB || '10', 10),
     maxFilesPerCase: parseInt(process.env.MAX_FILES_PER_CASE || '5', 10),
-    maxVideoSizeMB: parseInt(process.env.MAX_VIDEO_SIZE_MB || '100', 10),
+    maxVideoSizeMB: parseInt(process.env.MAX_VIDEO_SIZE_MB || '500', 10),
   },
   
   logging: {
