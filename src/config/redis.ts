@@ -53,6 +53,11 @@ export const redisHelpers = {
     const results = await multi.exec();
     return results ? results[0][1] as number : 0;
   },
+  
+  // Get time to live (TTL) in seconds
+  ttl: async (key: string) => {
+    return redis.ttl(key);
+  },
 };
 
 export default redis;

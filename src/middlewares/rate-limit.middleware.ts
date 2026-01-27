@@ -46,11 +46,20 @@ export const sosRateLimiter = async (
     
     const key = RATE_LIMIT_KEYS.SOS_CREATION(req.user.id);
     const count = await redisHelpers.incrWithExpiry(key, 3600); // 1 hour
+    const limit = config.rateLimit.sosPerHour;
     
-    if (count > config.rateLimit.sosPerHour) {
+    // Add rate limit headers
+    res.setHeader('X-RateLimit-Limit', limit.toString());
+    res.setHeader('X-RateLimit-Remaining', Math.max(0, limit - count).toString());
+    
+    if (count > limit) {
+      // Get TTL to calculate when the limit resets
+      const ttl = await redisHelpers.ttl(key);
+      const resetInMinutes = Math.ceil(ttl / 60);
+      
       ResponseUtil.tooManyRequests(
         res,
-        ERROR_MESSAGES.SOS_SPAM_DETECTED
+        `Too many SOS requests. You have exceeded the limit of ${limit} requests per hour. Please try again in ${resetInMinutes} minute(s).`
       );
       return;
     }
