@@ -5,6 +5,7 @@ import { logger } from "../../config/logger";
 import jwt from "jsonwebtoken";
 import { config } from "../../config";
 import { UserRole } from "@prisma/client";
+import { PasswordService } from "../../services/password.service";
 
 export class AuthService {
   /**
@@ -334,6 +335,226 @@ export class AuthService {
     } catch (error: any) {
       logger.error("Profile completion error:", error);
       throw new Error(error.message || "Failed to complete profile");
+    }
+  }
+
+  /**
+   * Officer login with Officer ID and Password
+   */
+  async loginOfficer(officerId: string, password: string) {
+    try {
+      // Find officer by officerId
+      const officer = await prisma.officerProfile.findUnique({
+        where: { officerId },
+        include: {
+          user: true,
+        },
+      });
+
+      if (!officer) {
+        throw new Error("Invalid officer ID or password");
+      }
+
+      const user = officer.user;
+
+      // Check if account is active
+      if (user.accountStatus !== "ACTIVE") {
+        throw new Error(`Account is ${user.accountStatus.toLowerCase()}`);
+      }
+
+      // Verify password
+      if (!user.password) {
+        throw new Error("Password not set for this account");
+      }
+
+      const isPasswordValid = await PasswordService.verifyPassword(
+        password,
+        user.password,
+      );
+
+      if (!isPasswordValid) {
+        throw new Error("Invalid officer ID or password");
+      }
+
+      // Generate tokens
+      const payload: JWTPayload = {
+        id: user.id,
+        role: user.role,
+        firebaseUid: user.firebaseUid || undefined,
+      };
+
+      const tokens = generateTokens(payload);
+
+      logger.info("Officer logged in successfully", {
+        userId: user.id,
+        officerId,
+      });
+
+      return {
+        ...tokens,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+          officerId: officer.officerId,
+          mustChangePassword: user.mustChangePassword,
+        },
+      };
+    } catch (error: any) {
+      logger.error("Officer login error:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Change officer password
+   */
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user || !user.password) {
+        throw new Error("User not found or password not set");
+      }
+
+      // Verify current password
+      const isValid = await PasswordService.verifyPassword(
+        currentPassword,
+        user.password,
+      );
+
+      if (!isValid) {
+        throw new Error("Current password is incorrect");
+      }
+
+      // Validate new password
+      const validation = PasswordService.validatePassword(newPassword);
+      if (!validation.valid) {
+        throw new Error(validation.message);
+      }
+
+      // Hash new password
+      const hashedPassword = await PasswordService.hashPassword(newPassword);
+
+      // Update password and clear mustChangePassword flag
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          password: hashedPassword,
+          mustChangePassword: false,
+        },
+      });
+
+      logger.info("Password changed successfully", { userId });
+
+      return { success: true, message: "Password changed successfully" };
+    } catch (error: any) {
+      logger.error("Password change error:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Request password reset (generates reset token)
+   */
+  async requestPasswordReset(officerId: string, email: string) {
+    try {
+      const officer = await prisma.officerProfile.findUnique({
+        where: { officerId },
+        include: { user: true },
+      });
+
+      if (!officer || officer.user.email !== email) {
+        // Don't reveal if user exists or not for security
+        return {
+          success: true,
+          message:
+            "If the account exists, a reset link will be sent to the email",
+        };
+      }
+
+      const { token, expiry } = PasswordService.generateResetToken();
+
+      // Store reset token
+      await prisma.user.update({
+        where: { id: officer.user.id },
+        data: {
+          passwordResetToken: token,
+          passwordResetExpiry: expiry,
+        },
+      });
+
+      logger.info("Password reset requested", {
+        userId: officer.user.id,
+        officerId,
+      });
+
+      // In production, send email with reset token
+      // For now, return token (remove this in production)
+      return {
+        success: true,
+        message: "Password reset link sent to your email",
+        // TODO: Remove token from response in production
+        resetToken: token,
+      };
+    } catch (error: any) {
+      logger.error("Password reset request error:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reset password using reset token
+   */
+  async resetPassword(resetToken: string, newPassword: string) {
+    try {
+      const user = await prisma.user.findFirst({
+        where: {
+          passwordResetToken: resetToken,
+          passwordResetExpiry: {
+            gt: new Date(),
+          },
+        },
+      });
+
+      if (!user) {
+        throw new Error("Invalid or expired reset token");
+      }
+
+      // Validate new password
+      const validation = PasswordService.validatePassword(newPassword);
+      if (!validation.valid) {
+        throw new Error(validation.message);
+      }
+
+      // Hash new password
+      const hashedPassword = await PasswordService.hashPassword(newPassword);
+
+      // Update password and clear reset token
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          password: hashedPassword,
+          passwordResetToken: null,
+          passwordResetExpiry: null,
+          mustChangePassword: false,
+        },
+      });
+
+      logger.info("Password reset successfully", { userId: user.id });
+
+      return { success: true, message: "Password reset successfully" };
+    } catch (error: any) {
+      logger.error("Password reset error:", error);
+      throw error;
     }
   }
 }
