@@ -3,8 +3,10 @@ import { AuthRequest } from "../../types";
 import { ResponseUtil } from "../../utils/response.util";
 import { asyncHandler } from "../../middlewares/error.middleware";
 import { OfficerRegistrationService } from "./registration.service";
+import { EmailService } from "../../services/email.service";
 
 const registrationService = new OfficerRegistrationService();
+const emailService = new EmailService();
 
 export class OfficerRegistrationController {
   /**
@@ -96,19 +98,30 @@ export class OfficerRegistrationController {
       { officerId, password },
     );
 
-    return ResponseUtil.success(
+    const response = ResponseUtil.success(
       res,
       {
         officerId: result.officerId,
-        temporaryPassword: result.temporaryPassword,
         user: {
-          name: result.user.name,
+          id: result.user.id,
           email: result.user.email,
-          phone: result.user.phone,
+          name: result.user.name,
         },
       },
       "Officer account created successfully",
     );
+
+    // Send email with credentials
+    if (result && result.user) {
+      await emailService.sendOfficerApprovalEmail(
+        result.user.email,
+        result.user.name,
+        result.officerId,
+        password,
+      );
+    }
+
+    return response;
   });
 
   /**
