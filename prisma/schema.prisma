@@ -52,7 +52,7 @@ model User {
   phone         String?   @unique
   googleId      String?   @unique
   name          String
-  email         String?
+  email         String?   @unique
   avatar        String?
   age           Int?
   profileCompleted Boolean @default(false)

@@ -1,6 +1,6 @@
-import prisma from "../config/database";
-import { logger } from "../config/logger";
-import { PasswordService } from "../services/password.service";
+import prisma from "../../config/database";
+import { logger } from "../../config/logger";
+import { PasswordService } from "../../services/password.service";
 import { RegistrationStatus, UserRole } from "@prisma/client";
 
 interface RegistrationRequest {

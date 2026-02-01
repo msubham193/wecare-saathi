@@ -4,7 +4,7 @@ import { generateTokens, JWTPayload } from "../../middlewares/auth.middleware";
 import { logger } from "../../config/logger";
 import jwt from "jsonwebtoken";
 import { config } from "../../config";
-import { UserRole } from "@prisma/client";
+import { UserRole, User } from "@prisma/client";
 import { PasswordService } from "../../services/password.service";
 
 export class AuthService {
@@ -355,7 +355,7 @@ export class AuthService {
         throw new Error("Invalid officer ID or password");
       }
 
-      const user = officer.user;
+      const user: User = officer.user;
 
       // Check if account is active
       if (user.accountStatus !== "ACTIVE") {
@@ -378,7 +378,7 @@ export class AuthService {
 
       // Generate tokens
       const payload: JWTPayload = {
-        id: user.id,
+        userId: user.id,
         role: user.role,
         firebaseUid: user.firebaseUid || undefined,
       };
@@ -516,7 +516,7 @@ export class AuthService {
    */
   async resetPassword(resetToken: string, newPassword: string) {
     try {
-      const hashedToken = await PasswordService.hashToken(resetToken);
+      const hashedToken = PasswordService.hashToken(resetToken);
 
       const user = await prisma.user.findFirst({
         where: {
@@ -552,6 +552,62 @@ export class AuthService {
       logger.info("Password reset successfully", { userId: user.id });
     } catch (error: any) {
       logger.error("Password reset error:", error);
+      throw error;
+    }
+  }
+  /**
+   * Admin login with Email and Password
+   */
+  async loginAdmin(email: string, password: string) {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { email },
+        include: { adminProfile: true },
+      });
+
+      if (!user || user.role !== UserRole.ADMIN) {
+        throw new Error("Invalid credentials");
+      }
+
+      if (!user.isActive) {
+        throw new Error("Account is inactive");
+      }
+
+      if (!user.password) {
+        throw new Error(
+          "Password not set. Please contact system administrator.",
+        );
+      }
+
+      const isPasswordValid = await PasswordService.verifyPassword(
+        password,
+        user.password,
+      );
+
+      if (!isPasswordValid) {
+        throw new Error("Invalid credentials");
+      }
+
+      const payload: JWTPayload = {
+        userId: user.id,
+        role: user.role,
+        email: user.email || undefined,
+      };
+
+      const tokens = generateTokens(payload);
+
+      return {
+        ...tokens,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          department: user.adminProfile?.department,
+        },
+      };
+    } catch (error: any) {
+      logger.error("Admin login error:", error);
       throw error;
     }
   }
