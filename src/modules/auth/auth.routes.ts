@@ -148,4 +148,21 @@ router.post(
   authController.resetPassword,
 );
 
+/**
+ * POST /auth/admin/login
+ * Admin login with Email and Password
+ */
+router.post(
+  "/admin/login",
+  loginRateLimiter,
+  validate(
+    z.object({
+      email: z.string().email(),
+      password: z.string().min(1),
+    }),
+  ),
+  auditLog(AUDIT_ACTIONS.USER_LOGIN, "users"),
+  authController.loginAdmin,
+);
+
 export default router;

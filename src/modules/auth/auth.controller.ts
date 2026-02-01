@@ -176,4 +176,20 @@ export class AuthController {
 
     return ResponseUtil.success(res, result);
   });
+
+  /**
+   * POST /auth/admin/login
+   * Admin login with Email and Password
+   */
+  loginAdmin = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return ResponseUtil.badRequest(res, "Email and password are required");
+    }
+
+    const result = await authService.loginAdmin(email, password);
+
+    return ResponseUtil.success(res, result, "Admin logged in successfully");
+  });
 }

@@ -1109,6 +1109,66 @@ After signing in with Google, users must complete their profile with additional 
       },
     },
 
+    // ========== ADMIN AUTHENTICATION ==========
+    "/auth/admin/login": {
+      post: {
+        tags: ["Authentication"],
+        summary: "Admin login with Email and Password",
+        description: "Login endpoint for system administrators.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["email", "password"],
+                properties: {
+                  email: {
+                    type: "string",
+                    format: "email",
+                    example: "admin@police.gov.in",
+                  },
+                  password: { type: "string", example: "Admin@123" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Login successful",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    data: {
+                      type: "object",
+                      properties: {
+                        accessToken: { type: "string" },
+                        refreshToken: { type: "string" },
+                        user: {
+                          type: "object",
+                          properties: {
+                            id: { type: "string" },
+                            name: { type: "string" },
+                            role: { type: "string", example: "ADMIN" },
+                            department: { type: "string" },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "401": { description: "Invalid credentials" },
+        },
+      },
+    },
+
     // ========== OFFICER AUTHENTICATION ==========
     "/auth/officer/login": {
       post: {

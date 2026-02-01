@@ -41,3 +41,10 @@ export const resetPasswordSchema = z.object({
   resetToken: z.string().min(1, "Reset token is required"),
   newPassword: z.string().min(8, "Password must be at least 8 characters"),
 });
+
+export const adminLoginSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
+});
+
+export type AdminLoginRequest = z.infer<typeof adminLoginSchema>;

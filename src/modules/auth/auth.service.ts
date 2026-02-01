@@ -516,9 +516,11 @@ export class AuthService {
    */
   async resetPassword(resetToken: string, newPassword: string) {
     try {
+      const hashedToken = await PasswordService.hashToken(resetToken);
+
       const user = await prisma.user.findFirst({
         where: {
-          passwordResetToken: resetToken,
+          passwordResetToken: hashedToken,
           passwordResetExpiry: {
             gt: new Date(),
           },
@@ -535,23 +537,19 @@ export class AuthService {
         throw new Error(validation.message);
       }
 
-      // Hash new password
       const hashedPassword = await PasswordService.hashPassword(newPassword);
 
-      // Update password and clear reset token
       await prisma.user.update({
         where: { id: user.id },
         data: {
           password: hashedPassword,
           passwordResetToken: null,
           passwordResetExpiry: null,
-          mustChangePassword: false,
+          mustChangePassword: false, // Reset this flag if it was set
         },
       });
 
       logger.info("Password reset successfully", { userId: user.id });
-
-      return { success: true, message: "Password reset successfully" };
     } catch (error: any) {
       logger.error("Password reset error:", error);
       throw error;
