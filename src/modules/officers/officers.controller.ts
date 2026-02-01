@@ -1,9 +1,9 @@
-import { Response } from 'express';
-import { AuthRequest } from '../../types';
-import { ResponseUtil } from '../../utils/response.util';
-import { asyncHandler } from '../../middlewares/error.middleware';
-import { LocationTracker } from './location-tracker';
-import prisma from '../../config/database';
+import { Response } from "express";
+import { AuthRequest } from "../../types";
+import { ResponseUtil } from "../../utils/response.util";
+import { asyncHandler } from "../../middlewares/error.middleware";
+import { LocationTracker } from "./location-tracker";
+import prisma from "../../config/database";
 
 const locationTracker = new LocationTracker();
 
@@ -16,28 +16,28 @@ export class OfficersController {
     if (!req.user) {
       return ResponseUtil.unauthorized(res);
     }
-    
+
     const officer = await prisma.officerProfile.findUnique({
       where: { userId: req.user.id },
     });
-    
+
     if (!officer) {
-      return ResponseUtil.badRequest(res, 'Officer profile not found');
+      return ResponseUtil.badRequest(res, "Officer profile not found");
     }
-    
+
     const { latitude, longitude, accuracy, caseId } = req.body;
-    
+
     await locationTracker.updateLocation(
       officer.id,
       latitude,
       longitude,
       accuracy,
-      caseId
+      caseId,
     );
-    
-    return ResponseUtil.success(res, null, 'Location updated');
+
+    return ResponseUtil.success(res, null, "Location updated");
   });
-  
+
   /**
    * GET /officer/profile
    * Get officer profile
@@ -46,7 +46,7 @@ export class OfficersController {
     if (!req.user) {
       return ResponseUtil.unauthorized(res);
     }
-    
+
     const officer = await prisma.officerProfile.findUnique({
       where: { userId: req.user.id },
       include: {
@@ -60,22 +60,22 @@ export class OfficersController {
         assignedCases: {
           where: {
             status: {
-              not: 'CLOSED',
+              not: "CLOSED",
             },
           },
           take: 10,
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
         },
       },
     });
-    
+
     if (!officer) {
-      return ResponseUtil.notFound(res, 'Officer profile not found');
+      return ResponseUtil.notFound(res, "Officer profile not found");
     }
-    
+
     return ResponseUtil.success(res, officer);
   });
-  
+
   /**
    * GET /admin/officers
    * Get all officers (admin)
@@ -96,19 +96,54 @@ export class OfficersController {
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
-    
+
     return ResponseUtil.success(res, officers);
   });
-  
+
   /**
    * GET /admin/officers/active-locations
    * Get all active officer locations (admin)
    */
-  getActiveLocations = asyncHandler(async (_req: AuthRequest, res: Response) => {
-    const locations = await locationTracker.getActiveOfficerLocations();
-    
-    return ResponseUtil.success(res, locations);
+  getActiveLocations = asyncHandler(
+    async (_req: AuthRequest, res: Response) => {
+      const locations = await locationTracker.getActiveOfficerLocations();
+
+      return ResponseUtil.success(res, locations);
+    },
+  );
+
+  /**
+   * GET /admin/officers/:id
+   * Get officer details by ID (admin)
+   */
+  getOfficerById = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+
+    const officer = await prisma.officerProfile.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            name: true,
+            email: true,
+            phone: true,
+            avatar: true,
+            createdAt: true,
+          },
+        },
+        assignedCases: {
+          orderBy: { createdAt: "desc" },
+          take: 20,
+        },
+      },
+    });
+
+    if (!officer) {
+      return ResponseUtil.notFound(res, "Officer not found");
+    }
+
+    return ResponseUtil.success(res, officer);
   });
 }

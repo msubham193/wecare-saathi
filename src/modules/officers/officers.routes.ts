@@ -67,4 +67,15 @@ router.get(
   officersController.getActiveLocations,
 );
 
+/**
+ * GET /admin/officers/:id
+ * Get officer details by ID
+ */
+router.get(
+  "/admin/officers/:id",
+  authenticate,
+  requireAdmin,
+  officersController.getOfficerById,
+);
+
 export default router;

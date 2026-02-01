@@ -1394,6 +1394,39 @@ After signing in with Google, users must complete their profile with additional 
       },
     },
 
+    "/officer/admin/officers/{id}": {
+      get: {
+        tags: ["Officers"],
+        summary: "Get officer details by ID (Admin only)",
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Officer details",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    data: { $ref: "#/components/schemas/Officer" },
+                  },
+                },
+              },
+            },
+          },
+          "404": { $ref: "#/components/responses/NotFoundError" },
+        },
+      },
+    },
+
     "/officer/admin/approve/{id}": {
       post: {
         tags: ["Officers"],
