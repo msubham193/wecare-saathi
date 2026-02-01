@@ -114,7 +114,7 @@ export class OfficerRegistrationController {
     // Send email with credentials
     if (result && result.user) {
       await emailService.sendOfficerApprovalEmail(
-        result.user.email,
+        result.user.email || "",
         result.user.name,
         result.officerId,
         password,
