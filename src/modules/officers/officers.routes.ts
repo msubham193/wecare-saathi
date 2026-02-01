@@ -1,12 +1,19 @@
-import { Router } from 'express';
-import { OfficersController } from './officers.controller';
-import { authenticate } from '../../middlewares/auth.middleware';
-import { requireOfficer, requireAdmin } from '../../middlewares/rbac.middleware';
-import { validate } from '../../middlewares/validator.middleware';
-import { z } from 'zod';
+import { Router } from "express";
+import { OfficersController } from "./officers.controller";
+import registrationRoutes from "./registration.routes";
+import { authenticate } from "../../middlewares/auth.middleware";
+import {
+  requireOfficer,
+  requireAdmin,
+} from "../../middlewares/rbac.middleware";
+import { validate } from "../../middlewares/validator.middleware";
+import { z } from "zod";
 
 const router = Router();
 const officersController = new OfficersController();
+
+// Mount registration routes
+router.use(registrationRoutes);
 
 const locationUpdateSchema = z.object({
   latitude: z.number().min(-90).max(90),
@@ -20,11 +27,11 @@ const locationUpdateSchema = z.object({
  * Update officer location
  */
 router.post(
-  '/location',
+  "/location",
   authenticate,
   requireOfficer,
   validate(locationUpdateSchema),
-  officersController.updateLocation
+  officersController.updateLocation,
 );
 
 /**
@@ -32,10 +39,10 @@ router.post(
  * Get officer profile
  */
 router.get(
-  '/profile',
+  "/profile",
   authenticate,
   requireOfficer,
-  officersController.getProfile
+  officersController.getProfile,
 );
 
 /**
@@ -43,10 +50,10 @@ router.get(
  * Get all officers
  */
 router.get(
-  '/admin/officers',
+  "/admin/officers",
   authenticate,
   requireAdmin,
-  officersController.getAllOfficers
+  officersController.getAllOfficers,
 );
 
 /**
@@ -54,10 +61,10 @@ router.get(
  * Get active officer locations
  */
 router.get(
-  '/admin/officers/active-locations',
+  "/admin/officers/active-locations",
   authenticate,
   requireAdmin,
-  officersController.getActiveLocations
+  officersController.getActiveLocations,
 );
 
 export default router;

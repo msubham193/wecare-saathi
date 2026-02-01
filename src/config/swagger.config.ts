@@ -1306,7 +1306,7 @@ After signing in with Google, users must complete their profile with additional 
       },
     },
 
-    "/officers/register": {
+    "/officer/register": {
       post: {
         tags: ["Officers"],
         summary: "Submit officer registration request",
@@ -1368,7 +1368,7 @@ After signing in with Google, users must complete their profile with additional 
       },
     },
 
-    "/officers/admin/requests": {
+    "/officer/admin/requests": {
       get: {
         tags: ["Officers"],
         summary: "List registration requests (Admin only)",
@@ -1394,7 +1394,7 @@ After signing in with Google, users must complete their profile with additional 
       },
     },
 
-    "/officers/admin/approve/{id}": {
+    "/officer/admin/approve/{id}": {
       post: {
         tags: ["Officers"],
         summary: "Approve registration (Admin only)",
@@ -1436,7 +1436,7 @@ After signing in with Google, users must complete their profile with additional 
       },
     },
 
-    "/officers/admin/reject/{id}": {
+    "/officer/admin/reject/{id}": {
       post: {
         tags: ["Officers"],
         summary: "Reject registration (Admin only)",
