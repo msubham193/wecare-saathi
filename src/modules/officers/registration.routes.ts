@@ -8,6 +8,17 @@ import { z } from "zod";
 const router = Router();
 const registrationController = new OfficerRegistrationController();
 
+const stationDataSchema = z.object({
+  mapboxPlaceId: z.string().min(1),
+  name: z.string().min(1),
+  address: z.string().min(1),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  district: z.string().optional(),
+  state: z.string().optional(),
+  pincode: z.string().optional(),
+});
+
 const registrationSchema = z.object({
   name: z.string().min(2).max(100),
   email: z.string().email(),
@@ -15,6 +26,7 @@ const registrationSchema = z.object({
   badgeNumber: z.string().min(1).max(50),
   designation: z.string().min(2).max(100),
   station: z.string().min(2).max(200),
+  stationData: stationDataSchema.optional(),
   department: z.string().min(2).max(100),
   dateOfBirth: z.string().optional(),
   joiningDate: z.string().optional(),

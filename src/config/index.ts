@@ -58,7 +58,11 @@ export const config = {
   fcm: {
     serverKey: process.env.FCM_SERVER_KEY || '',
   },
-  
+
+  mapbox: {
+    accessToken: process.env.MAPBOX_ACCESS_TOKEN || '',
+  },
+
   officerAssignment: {
     maxDistanceKm: parseFloat(process.env.MAX_ASSIGNMENT_DISTANCE_KM || '10'),
     autoAssignEnabled: process.env.AUTO_ASSIGN_ENABLED === 'true',

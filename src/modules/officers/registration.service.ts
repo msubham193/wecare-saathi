@@ -3,6 +3,17 @@ import { logger } from "../../config/logger";
 import { PasswordService } from "../../services/password.service";
 import { RegistrationStatus, UserRole } from "@prisma/client";
 
+interface StationData {
+  mapboxPlaceId: string;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  district?: string;
+  state?: string;
+  pincode?: string;
+}
+
 interface RegistrationRequest {
   name: string;
   email: string;
@@ -10,6 +21,7 @@ interface RegistrationRequest {
   badgeNumber: string;
   designation: string;
   station: string;
+  stationData?: StationData;
   department: string;
   dateOfBirth?: Date;
   joiningDate?: Date;
@@ -46,16 +58,52 @@ export class OfficerRegistrationService {
         }
       }
 
+      let stationId: string | undefined;
+
+      // If station data is provided, create or get the station
+      if (data.stationData) {
+        const station = await prisma.policeStation.upsert({
+          where: { mapboxPlaceId: data.stationData.mapboxPlaceId },
+          update: {}, // Don't update if exists
+          create: {
+            mapboxPlaceId: data.stationData.mapboxPlaceId,
+            name: data.stationData.name,
+            address: data.stationData.address,
+            latitude: data.stationData.latitude,
+            longitude: data.stationData.longitude,
+            district: data.stationData.district,
+            state: data.stationData.state,
+            pincode: data.stationData.pincode,
+          },
+        });
+        stationId = station.id;
+      }
+
       const request = await prisma.officerRegistrationRequest.create({
         data: {
-          ...data,
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          badgeNumber: data.badgeNumber,
+          designation: data.designation,
+          station: data.station,
+          stationId: stationId,
+          department: data.department,
+          dateOfBirth: data.dateOfBirth,
+          joiningDate: data.joiningDate,
+          idProofUrl: data.idProofUrl,
+          photoUrl: data.photoUrl,
           status: RegistrationStatus.PENDING,
+        },
+        include: {
+          policeStation: true,
         },
       });
 
       logger.info(`New officer registration request: ${request.id}`, {
         badgeNumber: data.badgeNumber,
         name: data.name,
+        stationId: stationId,
       });
 
       return request;
@@ -83,6 +131,9 @@ export class OfficerRegistrationService {
     const [requests, total] = await Promise.all([
       prisma.officerRegistrationRequest.findMany({
         where,
+        include: {
+          policeStation: true,
+        },
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,
         take: limit,
@@ -107,6 +158,9 @@ export class OfficerRegistrationService {
   async getRequestById(id: string) {
     const request = await prisma.officerRegistrationRequest.findUnique({
       where: { id },
+      include: {
+        policeStation: true,
+      },
     });
 
     if (!request) {
@@ -141,22 +195,59 @@ export class OfficerRegistrationService {
     const hashedPassword = await PasswordService.hashPassword(password);
 
     try {
+      // Check if user already exists
+      const existingUser = await prisma.user.findUnique({
+        where: { email: request.email },
+        include: {
+          officerProfile: true,
+        },
+      });
+
+      // If user exists and already has an officer profile, prevent duplicate
+      if (existingUser?.officerProfile) {
+        throw new Error(
+          "A user account with this email already exists and is linked to an officer profile",
+        );
+      }
+
       // Create user and officer profile in transaction
       const result = await prisma.$transaction(async (tx) => {
-        // Create user account
-        const user = await tx.user.create({
-          data: {
-            name: request.name,
-            email: request.email,
-            phone: request.phone,
-            role: UserRole.OFFICER,
-            password: hashedPassword,
-            mustChangePassword: true,
-            accountStatus: "ACTIVE",
-          },
-        });
+        let user;
 
-        // Create officer profile
+        // Reuse existing user or create new one
+        if (existingUser && existingUser.role === UserRole.OFFICER) {
+          // Update existing officer user
+          user = await tx.user.update({
+            where: { id: existingUser.id },
+            data: {
+              name: request.name,
+              phone: request.phone,
+              password: hashedPassword,
+              mustChangePassword: true,
+              accountStatus: "ACTIVE",
+            },
+          });
+        } else if (existingUser) {
+          // User exists but with different role - this is a conflict
+          throw new Error(
+            `A user account with email ${request.email} already exists with role ${existingUser.role}`,
+          );
+        } else {
+          // Create new user account
+          user = await tx.user.create({
+            data: {
+              name: request.name,
+              email: request.email,
+              phone: request.phone,
+              role: UserRole.OFFICER,
+              password: hashedPassword,
+              mustChangePassword: true,
+              accountStatus: "ACTIVE",
+            },
+          });
+        }
+
+        // Create officer profile with station link
         const officer = await tx.officerProfile.create({
           data: {
             userId: user.id,
@@ -164,6 +255,7 @@ export class OfficerRegistrationService {
             officerId: officerId,
             designation: request.designation,
             station: request.station,
+            stationId: request.stationId,
           },
         });
 

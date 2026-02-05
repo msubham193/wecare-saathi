@@ -101,6 +101,10 @@ Authorization: Bearer <your-jwt-token>
       description: "Officer profile and location management",
     },
     {
+      name: "Police Stations",
+      description: "Police station search, selection, and management via Mapbox integration",
+    },
+    {
       name: "Test",
       description: "Development-only test endpoints",
     },
@@ -615,6 +619,173 @@ Authorization: Bearer <your-jwt-token>
             type: "string",
             format: "uuid",
             description: "Associated case ID if on active duty",
+          },
+        },
+      },
+
+      // ========== Police Station Models ==========
+      PoliceStation: {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+            format: "uuid",
+          },
+          mapboxPlaceId: {
+            type: "string",
+            description: "Unique Mapbox place identifier",
+          },
+          name: {
+            type: "string",
+            example: "Kharavel Nagar Police Station",
+          },
+          address: {
+            type: "string",
+            example: "Kharavel Nagar, Bhubaneswar, Odisha 751001",
+          },
+          latitude: {
+            type: "number",
+            format: "double",
+            example: 20.2961,
+          },
+          longitude: {
+            type: "number",
+            format: "double",
+            example: 85.8245,
+          },
+          district: {
+            type: "string",
+            nullable: true,
+            example: "Khordha",
+          },
+          state: {
+            type: "string",
+            nullable: true,
+            example: "Odisha",
+          },
+          pincode: {
+            type: "string",
+            nullable: true,
+            example: "751001",
+          },
+          phone: {
+            type: "string",
+            nullable: true,
+          },
+          isActive: {
+            type: "boolean",
+            example: true,
+          },
+          createdAt: {
+            type: "string",
+            format: "date-time",
+          },
+          updatedAt: {
+            type: "string",
+            format: "date-time",
+          },
+        },
+      },
+      PoliceStationSearchResult: {
+        type: "object",
+        properties: {
+          mapboxPlaceId: {
+            type: "string",
+            description: "Mapbox place ID for selection",
+          },
+          name: {
+            type: "string",
+            example: "Kharavel Nagar Police Station",
+          },
+          address: {
+            type: "string",
+            example: "Kharavel Nagar, Bhubaneswar, Odisha",
+          },
+          latitude: {
+            type: "number",
+            format: "double",
+          },
+          longitude: {
+            type: "number",
+            format: "double",
+          },
+          district: {
+            type: "string",
+            nullable: true,
+          },
+          state: {
+            type: "string",
+            nullable: true,
+          },
+          pincode: {
+            type: "string",
+            nullable: true,
+          },
+        },
+      },
+      SelectStationRequest: {
+        type: "object",
+        required: ["mapboxPlaceId", "name", "address", "latitude", "longitude"],
+        properties: {
+          mapboxPlaceId: {
+            type: "string",
+            description: "Mapbox place ID from search results",
+          },
+          name: {
+            type: "string",
+          },
+          address: {
+            type: "string",
+          },
+          latitude: {
+            type: "number",
+            minimum: -90,
+            maximum: 90,
+          },
+          longitude: {
+            type: "number",
+            minimum: -180,
+            maximum: 180,
+          },
+          district: {
+            type: "string",
+          },
+          state: {
+            type: "string",
+          },
+          pincode: {
+            type: "string",
+          },
+        },
+      },
+      StationData: {
+        type: "object",
+        description: "Station data for officer registration",
+        required: ["mapboxPlaceId", "name", "address", "latitude", "longitude"],
+        properties: {
+          mapboxPlaceId: {
+            type: "string",
+          },
+          name: {
+            type: "string",
+          },
+          address: {
+            type: "string",
+          },
+          latitude: {
+            type: "number",
+          },
+          longitude: {
+            type: "number",
+          },
+          district: {
+            type: "string",
+          },
+          state: {
+            type: "string",
+          },
+          pincode: {
+            type: "string",
           },
         },
       },
@@ -1310,8 +1481,18 @@ After signing in with Google, users must complete their profile with additional 
       post: {
         tags: ["Officers"],
         summary: "Submit officer registration request",
-        description:
-          "Officers register themselves. Admin reviews and approves/rejects.",
+        description: `
+Officers register themselves with police station selection from Mapbox.
+
+**Registration Flow:**
+1. Officer searches for their station via \`/stations/search\`
+2. Officer selects station from search results
+3. Officer submits registration with \`stationData\` object
+4. Admin reviews and approves/rejects the request
+5. On approval, officer is linked to the selected police station
+
+**Important:** Include \`stationData\` to properly link officer to a police station with coordinates.
+        `,
         requestBody: {
           required: true,
           content: {
@@ -1335,9 +1516,54 @@ After signing in with Google, users must complete their profile with additional 
                   designation: { type: "string", example: "Sub-Inspector" },
                   station: {
                     type: "string",
-                    example: "Khandagiri Police Station",
+                    description: "Station name (text fallback)",
+                    example: "Kharavel Nagar Police Station",
+                  },
+                  stationData: {
+                    $ref: "#/components/schemas/StationData",
+                    description: "Complete station data from Mapbox search",
                   },
                   department: { type: "string", example: "Law & Order" },
+                  dateOfBirth: { type: "string", format: "date", example: "1990-01-15" },
+                  joiningDate: { type: "string", format: "date", example: "2020-06-01" },
+                  idProofUrl: { type: "string", format: "uri" },
+                  photoUrl: { type: "string", format: "uri" },
+                },
+              },
+              examples: {
+                withStationData: {
+                  summary: "Registration with Mapbox station data",
+                  value: {
+                    name: "Officer Raj Kumar",
+                    email: "raj.kumar@police.gov.in",
+                    phone: "+919876543210",
+                    badgeNumber: "PCB-2024-001",
+                    designation: "Sub-Inspector",
+                    station: "Kharavel Nagar Police Station",
+                    stationData: {
+                      mapboxPlaceId: "poi.123456789",
+                      name: "Kharavel Nagar Police Station",
+                      address: "Kharavel Nagar, Bhubaneswar, Odisha 751001",
+                      latitude: 20.2961,
+                      longitude: 85.8245,
+                      district: "Khordha",
+                      state: "Odisha",
+                      pincode: "751001",
+                    },
+                    department: "Law & Order",
+                  },
+                },
+                withoutStationData: {
+                  summary: "Legacy registration (backward compatible)",
+                  value: {
+                    name: "Officer Raj Kumar",
+                    email: "raj.kumar@police.gov.in",
+                    phone: "+919876543210",
+                    badgeNumber: "PCB-2024-001",
+                    designation: "Sub-Inspector",
+                    station: "Kharavel Nagar Police Station",
+                    department: "Law & Order",
+                  },
                 },
               },
             },
@@ -1352,10 +1578,11 @@ After signing in with Google, users must complete their profile with additional 
                   type: "object",
                   properties: {
                     success: { type: "boolean" },
+                    message: { type: "string", example: "Registration request submitted. Admin will review and approve." },
                     data: {
                       type: "object",
                       properties: {
-                        requestId: { type: "string" },
+                        requestId: { type: "string", format: "uuid" },
                         status: { type: "string", example: "PENDING" },
                       },
                     },
@@ -1363,6 +1590,12 @@ After signing in with Google, users must complete their profile with additional 
                 },
               },
             },
+          },
+          "400": {
+            $ref: "#/components/responses/ValidationError",
+          },
+          "409": {
+            description: "Duplicate registration (email, phone, or badge already exists)",
           },
         },
       },
@@ -2275,6 +2508,547 @@ After signing in with Google, users must complete their profile with additional 
                             format: "date-time",
                           },
                         },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "401": {
+            $ref: "#/components/responses/UnauthorizedError",
+          },
+          "403": {
+            $ref: "#/components/responses/ForbiddenError",
+          },
+        },
+      },
+    },
+
+    // ========== POLICE STATION ENDPOINTS ==========
+    "/stations/search": {
+      get: {
+        tags: ["Police Stations"],
+        summary: "Search police stations via Mapbox",
+        description: `
+Search for police stations using Mapbox Geocoding API. Use this during officer registration to find and select a police station.
+
+**Usage:**
+1. User types station name in search field
+2. Frontend calls this endpoint with the search query
+3. Results are displayed with name, address, and coordinates
+4. User selects a station from the results
+5. Selected station data is passed to registration endpoint
+        `,
+        parameters: [
+          {
+            name: "query",
+            in: "query",
+            required: true,
+            schema: {
+              type: "string",
+            },
+            description: "Search query (e.g., 'Kharavel Nagar', 'Bhubaneswar police')",
+            example: "Kharavel Nagar",
+          },
+          {
+            name: "latitude",
+            in: "query",
+            schema: {
+              type: "number",
+            },
+            description: "User latitude for proximity bias",
+          },
+          {
+            name: "longitude",
+            in: "query",
+            schema: {
+              type: "number",
+            },
+            description: "User longitude for proximity bias",
+          },
+          {
+            name: "limit",
+            in: "query",
+            schema: {
+              type: "integer",
+              default: 10,
+            },
+            description: "Maximum results to return",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Search results from Mapbox",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: {
+                      type: "boolean",
+                      example: true,
+                    },
+                    data: {
+                      type: "array",
+                      items: {
+                        $ref: "#/components/schemas/PoliceStationSearchResult",
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "400": {
+            $ref: "#/components/responses/ValidationError",
+          },
+        },
+      },
+    },
+    "/stations/select": {
+      post: {
+        tags: ["Police Stations"],
+        summary: "Select and save a police station",
+        description: `
+Save a selected police station to the database. Called after user selects a station from search results.
+
+**Flow:**
+1. User searches stations via /stations/search
+2. User selects a station from results
+3. Frontend calls this endpoint with the selected station data
+4. Station is created in DB (or existing one is returned)
+5. Station ID is used in officer registration
+        `,
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/SelectStationRequest",
+              },
+              example: {
+                mapboxPlaceId: "poi.123456789",
+                name: "Kharavel Nagar Police Station",
+                address: "Kharavel Nagar, Bhubaneswar, Odisha 751001",
+                latitude: 20.2961,
+                longitude: 85.8245,
+                district: "Khordha",
+                state: "Odisha",
+                pincode: "751001",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Station saved/retrieved successfully",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: {
+                      type: "boolean",
+                      example: true,
+                    },
+                    data: {
+                      $ref: "#/components/schemas/PoliceStation",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "400": {
+            $ref: "#/components/responses/ValidationError",
+          },
+        },
+      },
+    },
+    "/stations/nearest": {
+      get: {
+        tags: ["Police Stations"],
+        summary: "Find nearest police stations",
+        description: "Find police stations nearest to given coordinates. Used for SOS assignment and officer dispatch.",
+        parameters: [
+          {
+            name: "latitude",
+            in: "query",
+            required: true,
+            schema: {
+              type: "number",
+              minimum: -90,
+              maximum: 90,
+            },
+            description: "Reference latitude",
+            example: 20.2961,
+          },
+          {
+            name: "longitude",
+            in: "query",
+            required: true,
+            schema: {
+              type: "number",
+              minimum: -180,
+              maximum: 180,
+            },
+            description: "Reference longitude",
+            example: 85.8245,
+          },
+          {
+            name: "limit",
+            in: "query",
+            schema: {
+              type: "integer",
+              default: 5,
+            },
+            description: "Maximum stations to return",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Nearest stations with distance",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: {
+                      type: "boolean",
+                      example: true,
+                    },
+                    data: {
+                      type: "array",
+                      items: {
+                        allOf: [
+                          {
+                            $ref: "#/components/schemas/PoliceStation",
+                          },
+                          {
+                            type: "object",
+                            properties: {
+                              distanceKm: {
+                                type: "number",
+                                description: "Distance in kilometers",
+                                example: 2.5,
+                              },
+                            },
+                          },
+                        ],
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "400": {
+            $ref: "#/components/responses/ValidationError",
+          },
+        },
+      },
+    },
+    "/stations": {
+      get: {
+        tags: ["Police Stations"],
+        summary: "Get all police stations (Admin only)",
+        description: "Retrieve all registered police stations with pagination and filters.",
+        security: [
+          {
+            BearerAuth: [],
+          },
+        ],
+        parameters: [
+          {
+            name: "district",
+            in: "query",
+            schema: {
+              type: "string",
+            },
+            description: "Filter by district",
+          },
+          {
+            name: "state",
+            in: "query",
+            schema: {
+              type: "string",
+            },
+            description: "Filter by state",
+          },
+          {
+            name: "page",
+            in: "query",
+            schema: {
+              type: "integer",
+              default: 1,
+            },
+          },
+          {
+            name: "limit",
+            in: "query",
+            schema: {
+              type: "integer",
+              default: 50,
+            },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Stations retrieved",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: {
+                      type: "boolean",
+                      example: true,
+                    },
+                    data: {
+                      type: "object",
+                      properties: {
+                        stations: {
+                          type: "array",
+                          items: {
+                            $ref: "#/components/schemas/PoliceStation",
+                          },
+                        },
+                        pagination: {
+                          type: "object",
+                          properties: {
+                            total: {
+                              type: "integer",
+                            },
+                            page: {
+                              type: "integer",
+                            },
+                            limit: {
+                              type: "integer",
+                            },
+                            totalPages: {
+                              type: "integer",
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "401": {
+            $ref: "#/components/responses/UnauthorizedError",
+          },
+          "403": {
+            $ref: "#/components/responses/ForbiddenError",
+          },
+        },
+      },
+    },
+    "/stations/{id}": {
+      get: {
+        tags: ["Police Stations"],
+        summary: "Get station details (Admin only)",
+        description: "Retrieve detailed information about a specific police station including assigned officers.",
+        security: [
+          {
+            BearerAuth: [],
+          },
+        ],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: {
+              type: "string",
+              format: "uuid",
+            },
+            description: "Station ID",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Station details",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: {
+                      type: "boolean",
+                      example: true,
+                    },
+                    data: {
+                      allOf: [
+                        {
+                          $ref: "#/components/schemas/PoliceStation",
+                        },
+                        {
+                          type: "object",
+                          properties: {
+                            officers: {
+                              type: "array",
+                              items: {
+                                $ref: "#/components/schemas/Officer",
+                              },
+                            },
+                            _count: {
+                              type: "object",
+                              properties: {
+                                officers: {
+                                  type: "integer",
+                                },
+                              },
+                            },
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "401": {
+            $ref: "#/components/responses/UnauthorizedError",
+          },
+          "403": {
+            $ref: "#/components/responses/ForbiddenError",
+          },
+          "404": {
+            $ref: "#/components/responses/NotFoundError",
+          },
+        },
+      },
+      patch: {
+        tags: ["Police Stations"],
+        summary: "Update station details (Admin only)",
+        description: "Update police station information.",
+        security: [
+          {
+            BearerAuth: [],
+          },
+        ],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: {
+              type: "string",
+              format: "uuid",
+            },
+          },
+        ],
+        requestBody: {
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  name: {
+                    type: "string",
+                  },
+                  address: {
+                    type: "string",
+                  },
+                  phone: {
+                    type: "string",
+                  },
+                  isActive: {
+                    type: "boolean",
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Station updated",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: {
+                      type: "boolean",
+                      example: true,
+                    },
+                    message: {
+                      type: "string",
+                      example: "Station updated successfully",
+                    },
+                    data: {
+                      $ref: "#/components/schemas/PoliceStation",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "401": {
+            $ref: "#/components/responses/UnauthorizedError",
+          },
+          "403": {
+            $ref: "#/components/responses/ForbiddenError",
+          },
+          "404": {
+            $ref: "#/components/responses/NotFoundError",
+          },
+        },
+      },
+    },
+    "/stations/{id}/officers": {
+      get: {
+        tags: ["Police Stations"],
+        summary: "Get station officers (Admin only)",
+        description: "Retrieve all officers assigned to a specific police station.",
+        security: [
+          {
+            BearerAuth: [],
+          },
+        ],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: {
+              type: "string",
+              format: "uuid",
+            },
+            description: "Station ID",
+          },
+          {
+            name: "status",
+            in: "query",
+            schema: {
+              type: "string",
+              enum: ["AVAILABLE", "ON_DUTY", "BUSY", "OFF_DUTY"],
+            },
+            description: "Filter by officer status",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Officers retrieved",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: {
+                      type: "boolean",
+                      example: true,
+                    },
+                    data: {
+                      type: "array",
+                      items: {
+                        $ref: "#/components/schemas/Officer",
                       },
                     },
                   },
