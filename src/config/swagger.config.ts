@@ -105,6 +105,14 @@ Authorization: Bearer <your-jwt-token>
       description: "Police station search, selection, and management via Mapbox integration",
     },
     {
+      name: "Feedback",
+      description: "Case feedback from citizens and admin replies",
+    },
+    {
+      name: "Officer Registration",
+      description: "Officer registration requests and admin review",
+    },
+    {
       name: "Test",
       description: "Development-only test endpoints",
     },
@@ -758,6 +766,102 @@ Authorization: Bearer <your-jwt-token>
           },
         },
       },
+      // ========== Feedback Models ==========
+      Feedback: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          caseId: { type: "string", format: "uuid" },
+          citizenId: { type: "string", format: "uuid" },
+          text: { type: "string", example: "Officers responded quickly. Very satisfied." },
+          resolved: { type: "boolean", example: true },
+          rating: { type: "integer", minimum: 1, maximum: 5, nullable: true, example: 5 },
+          photoUrl: { type: "string", nullable: true },
+          photoFileName: { type: "string", nullable: true },
+          photoFileSize: { type: "integer", nullable: true },
+          videoUrl: { type: "string", nullable: true },
+          videoFileName: { type: "string", nullable: true },
+          videoFileSize: { type: "integer", nullable: true },
+          citizen: {
+            type: "object",
+            properties: {
+              user: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  phone: { type: "string" },
+                },
+              },
+            },
+          },
+          case: {
+            type: "object",
+            properties: {
+              caseNumber: { type: "string", example: "SOS-20260206-143020-1234" },
+              status: { type: "string", example: "CLOSED" },
+            },
+          },
+          replies: {
+            type: "array",
+            items: { $ref: "#/components/schemas/FeedbackReply" },
+          },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      FeedbackReply: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          feedbackId: { type: "string", format: "uuid" },
+          adminId: { type: "string", format: "uuid" },
+          text: { type: "string", example: "Thank you for your feedback." },
+          admin: {
+            type: "object",
+            properties: {
+              user: {
+                type: "object",
+                properties: {
+                  name: { type: "string", example: "Admin User" },
+                },
+              },
+            },
+          },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+
+      // ========== Officer Registration Models ==========
+      OfficerRegistrationRequest: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          name: { type: "string", example: "Officer Raj Kumar" },
+          email: { type: "string", format: "email", example: "raj.kumar@police.gov.in" },
+          phone: { type: "string", example: "+919876543210" },
+          dateOfBirth: { type: "string", format: "date", nullable: true },
+          badgeNumber: { type: "string", example: "PCB-2024-001" },
+          designation: { type: "string", example: "Sub-Inspector" },
+          station: { type: "string", example: "Kharavel Nagar Police Station" },
+          stationId: { type: "string", format: "uuid", nullable: true },
+          department: { type: "string", example: "Law & Order" },
+          joiningDate: { type: "string", format: "date", nullable: true },
+          idProofUrl: { type: "string", nullable: true },
+          photoUrl: { type: "string", nullable: true },
+          status: { type: "string", enum: ["PENDING", "APPROVED", "REJECTED"], example: "PENDING" },
+          rejectionReason: { type: "string", nullable: true },
+          reviewedBy: { type: "string", nullable: true },
+          reviewedAt: { type: "string", format: "date-time", nullable: true },
+          generatedOfficerId: { type: "string", nullable: true, example: "OF2026001" },
+          policeStation: {
+            $ref: "#/components/schemas/PoliceStation",
+          },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+
       StationData: {
         type: "object",
         description: "Station data for officer registration",
@@ -1479,7 +1583,7 @@ After signing in with Google, users must complete their profile with additional 
 
     "/officer/register": {
       post: {
-        tags: ["Officers"],
+        tags: ["Officer Registration"],
         summary: "Submit officer registration request",
         description: `
 Officers register themselves with police station selection from Mapbox.
@@ -1603,8 +1707,9 @@ Officers register themselves with police station selection from Mapbox.
 
     "/officer/admin/requests": {
       get: {
-        tags: ["Officers"],
-        summary: "List registration requests (Admin only)",
+        tags: ["Officer Registration"],
+        summary: "List all registration requests (Admin only)",
+        description: "Retrieve all officer registration requests with full submitted details. Supports filtering by status and pagination.",
         security: [{ BearerAuth: [] }],
         parameters: [
           {
@@ -1614,15 +1719,92 @@ Officers register themselves with police station selection from Mapbox.
               type: "string",
               enum: ["PENDING", "APPROVED", "REJECTED"],
             },
+            description: "Filter by registration status",
           },
           {
             name: "page",
             in: "query",
             schema: { type: "integer", default: 1 },
+            description: "Page number",
+          },
+          {
+            name: "limit",
+            in: "query",
+            schema: { type: "integer", default: 20 },
+            description: "Items per page",
           },
         ],
         responses: {
-          "200": { description: "List of requests" },
+          "200": {
+            description: "Registration requests retrieved with all submitted details",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    data: {
+                      type: "object",
+                      properties: {
+                        requests: {
+                          type: "array",
+                          items: { $ref: "#/components/schemas/OfficerRegistrationRequest" },
+                        },
+                        pagination: {
+                          type: "object",
+                          properties: {
+                            total: { type: "integer" },
+                            page: { type: "integer" },
+                            limit: { type: "integer" },
+                            totalPages: { type: "integer" },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "401": { $ref: "#/components/responses/UnauthorizedError" },
+          "403": { $ref: "#/components/responses/ForbiddenError" },
+        },
+      },
+    },
+
+    "/officer/admin/requests/{id}": {
+      get: {
+        tags: ["Officer Registration"],
+        summary: "Get registration request details (Admin only)",
+        description: "Retrieve full details of a specific officer registration request including all personal info, officer details, uploaded documents, and linked police station data.",
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+            description: "Registration request ID",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Full registration request details",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    data: { $ref: "#/components/schemas/OfficerRegistrationRequest" },
+                  },
+                },
+              },
+            },
+          },
+          "401": { $ref: "#/components/responses/UnauthorizedError" },
+          "403": { $ref: "#/components/responses/ForbiddenError" },
+          "404": { $ref: "#/components/responses/NotFoundError" },
         },
       },
     },
@@ -1662,9 +1844,9 @@ Officers register themselves with police station selection from Mapbox.
 
     "/officer/admin/approve/{id}": {
       post: {
-        tags: ["Officers"],
+        tags: ["Officer Registration"],
         summary: "Approve registration (Admin only)",
-        description: "Approve and auto-generate Officer ID + password.",
+        description: "Approve an officer registration request. Auto-generates Officer ID and temporary password, creates User + OfficerProfile, and sends approval email with credentials.",
         security: [{ BearerAuth: [] }],
         parameters: [
           {
@@ -1704,7 +1886,7 @@ Officers register themselves with police station selection from Mapbox.
 
     "/officer/admin/reject/{id}": {
       post: {
-        tags: ["Officers"],
+        tags: ["Officer Registration"],
         summary: "Reject registration (Admin only)",
         security: [{ BearerAuth: [] }],
         parameters: [
@@ -3002,6 +3184,310 @@ Save a selected police station to the database. Called after user selects a stat
         },
       },
     },
+    // ========== FEEDBACK ENDPOINTS ==========
+    "/feedback": {
+      get: {
+        tags: ["Feedback"],
+        summary: "List all feedbacks (Admin only)",
+        description: "Retrieve all case feedbacks with pagination and filters. Admin can see all citizen feedback across all cases.",
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          {
+            name: "page",
+            in: "query",
+            schema: { type: "integer", default: 1 },
+            description: "Page number",
+          },
+          {
+            name: "limit",
+            in: "query",
+            schema: { type: "integer", default: 20 },
+            description: "Items per page",
+          },
+          {
+            name: "resolved",
+            in: "query",
+            schema: { type: "string", enum: ["true", "false"] },
+            description: "Filter by resolved status",
+          },
+          {
+            name: "rating",
+            in: "query",
+            schema: { type: "integer", minimum: 1, maximum: 5 },
+            description: "Filter by rating (1-5)",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Feedbacks retrieved successfully",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    data: {
+                      type: "object",
+                      properties: {
+                        feedbacks: {
+                          type: "array",
+                          items: { $ref: "#/components/schemas/Feedback" },
+                        },
+                        pagination: {
+                          type: "object",
+                          properties: {
+                            total: { type: "integer" },
+                            page: { type: "integer" },
+                            limit: { type: "integer" },
+                            totalPages: { type: "integer" },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "401": { $ref: "#/components/responses/UnauthorizedError" },
+          "403": { $ref: "#/components/responses/ForbiddenError" },
+        },
+      },
+    },
+    "/feedback/{caseId}": {
+      post: {
+        tags: ["Feedback"],
+        summary: "Submit feedback for a case (Citizen only)",
+        description: `
+Submit feedback for a closed SOS case. Supports text, photo, video, rating, and resolved status.
+
+**Requirements:**
+- Case must belong to the authenticated citizen
+- Case must be in CLOSED status
+- Only one feedback per case is allowed
+
+**File Upload:**
+- Use \`multipart/form-data\` content type
+- \`photo\` field: optional image (JPEG, PNG)
+- \`video\` field: optional video (MP4, MOV, AVI, WebM)
+        `,
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          {
+            name: "caseId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+            description: "SOS Case ID",
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "multipart/form-data": {
+              schema: {
+                type: "object",
+                required: ["text", "resolved"],
+                properties: {
+                  text: {
+                    type: "string",
+                    maxLength: 2000,
+                    description: "Feedback text",
+                    example: "Officers responded quickly. Very satisfied with the response.",
+                  },
+                  resolved: {
+                    type: "string",
+                    enum: ["true", "false"],
+                    description: "Whether the citizen considers the case resolved",
+                  },
+                  rating: {
+                    type: "string",
+                    enum: ["1", "2", "3", "4", "5"],
+                    description: "Rating 1-5 stars (optional)",
+                  },
+                  photo: {
+                    type: "string",
+                    format: "binary",
+                    description: "Photo attachment (JPEG, PNG)",
+                  },
+                  video: {
+                    type: "string",
+                    format: "binary",
+                    description: "Video attachment (MP4, MOV, AVI, WebM)",
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Feedback submitted successfully",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    message: { type: "string", example: "Feedback submitted successfully" },
+                    data: { $ref: "#/components/schemas/Feedback" },
+                  },
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/UnauthorizedError" },
+          "403": { $ref: "#/components/responses/ForbiddenError" },
+          "404": { $ref: "#/components/responses/NotFoundError" },
+          "409": {
+            description: "Feedback already exists for this case",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                example: {
+                  success: false,
+                  error: "Feedback has already been submitted for this case",
+                },
+              },
+            },
+          },
+        },
+      },
+      get: {
+        tags: ["Feedback"],
+        summary: "Get feedback for a case",
+        description: "Retrieve feedback for a specific SOS case. Citizens can view their own case feedback, admins can view any.",
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          {
+            name: "caseId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+            description: "SOS Case ID",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Feedback retrieved (or null if none exists)",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    data: {
+                      nullable: true,
+                      allOf: [{ $ref: "#/components/schemas/Feedback" }],
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "401": { $ref: "#/components/responses/UnauthorizedError" },
+          "403": { $ref: "#/components/responses/ForbiddenError" },
+          "404": { $ref: "#/components/responses/NotFoundError" },
+        },
+      },
+    },
+    "/feedback/{feedbackId}/reply": {
+      post: {
+        tags: ["Feedback"],
+        summary: "Reply to feedback (Admin only)",
+        description: "Admin can reply to citizen feedback. Multiple replies are allowed per feedback.",
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          {
+            name: "feedbackId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+            description: "Feedback ID",
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["text"],
+                properties: {
+                  text: {
+                    type: "string",
+                    maxLength: 2000,
+                    example: "Thank you for your feedback. We are glad the response was satisfactory.",
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Reply submitted successfully",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    message: { type: "string", example: "Reply submitted successfully" },
+                    data: { $ref: "#/components/schemas/FeedbackReply" },
+                  },
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/UnauthorizedError" },
+          "403": { $ref: "#/components/responses/ForbiddenError" },
+          "404": { $ref: "#/components/responses/NotFoundError" },
+        },
+      },
+    },
+    "/feedback/{feedbackId}/replies": {
+      get: {
+        tags: ["Feedback"],
+        summary: "Get replies for a feedback",
+        description: "Retrieve all admin replies for a specific feedback. Citizens can view replies on their own feedback, admins can view any.",
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          {
+            name: "feedbackId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+            description: "Feedback ID",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Replies retrieved successfully",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    data: {
+                      type: "array",
+                      items: { $ref: "#/components/schemas/FeedbackReply" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "401": { $ref: "#/components/responses/UnauthorizedError" },
+          "403": { $ref: "#/components/responses/ForbiddenError" },
+          "404": { $ref: "#/components/responses/NotFoundError" },
+        },
+      },
+    },
+
     "/stations/{id}/officers": {
       get: {
         tags: ["Police Stations"],

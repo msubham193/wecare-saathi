@@ -119,6 +119,51 @@ export class S3Service {
   }
 
   /**
+   * Upload feedback media (photo or video) to S3
+   */
+  async uploadFeedbackMedia(
+    file: Express.Multer.File,
+    options: {
+      caseId: string;
+      userId: string;
+    }
+  ): Promise<{ key: string; url: string }> {
+    try {
+      const fileExtension = path.extname(file.originalname);
+      const fileName = `${uuidv4()}${fileExtension}`;
+      const key = `feedback/${options.caseId}/${fileName}`;
+
+      const command = new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+        Metadata: {
+          caseId: options.caseId,
+          userId: options.userId,
+          originalName: file.originalname,
+          uploadedAt: new Date().toISOString(),
+        },
+      });
+
+      await this.s3Client.send(command);
+
+      const url = this.getPublicUrl(key);
+
+      logger.info('Feedback media uploaded to S3', {
+        key,
+        caseId: options.caseId,
+        size: file.size,
+      });
+
+      return { key, url };
+    } catch (error: any) {
+      logger.error('Error uploading feedback media to S3:', error);
+      throw new Error(`Failed to upload feedback media: ${error.message}`);
+    }
+  }
+
+  /**
    * Generate a pre-signed URL for secure access to a file
    */
   async getPresignedUrl(key: string, expiresIn: number = 3600): Promise<string> {

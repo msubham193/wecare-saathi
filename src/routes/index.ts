@@ -4,6 +4,7 @@ import sosRoutes from '../modules/sos/sos.routes';
 import officerRoutes from '../modules/officers/officers.routes';
 import evidenceRoutes from '../modules/evidence/evidence.routes';
 import stationRoutes from '../modules/stations/station.routes';
+import feedbackRoutes from '../modules/feedback/feedback.routes';
 import testRoutes from './test.routes';
 import { config } from '../config';
 
@@ -25,6 +26,7 @@ router.use('/sos', sosRoutes);
 router.use('/officer', officerRoutes);
 router.use('/evidence', evidenceRoutes);
 router.use('/stations', stationRoutes);
+router.use('/feedback', feedbackRoutes);
 
 // Test routes (DEV ONLY - remove in production)
 if (config.env === 'development') {

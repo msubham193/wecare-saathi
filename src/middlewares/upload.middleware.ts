@@ -82,6 +82,46 @@ export const uploadEvidence = multer({
 }).single('file');
 
 /**
+ * Allowed feedback media types (images + videos)
+ */
+const ALLOWED_FEEDBACK_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/jpg',
+  ...ALLOWED_VIDEO_TYPES,
+];
+
+const feedbackFileFilter = (
+  _req: Request,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback
+) => {
+  if (ALLOWED_FEEDBACK_TYPES.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(
+      new Error(
+        `Invalid file type for feedback. Allowed: ${ALLOWED_FEEDBACK_TYPES.join(', ')}`
+      )
+    );
+  }
+};
+
+/**
+ * Middleware for uploading feedback media (optional photo + optional video)
+ */
+export const uploadFeedbackMedia = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: feedbackFileFilter,
+  limits: {
+    fileSize: (config.fileUpload?.maxVideoSizeMB || 50) * 1024 * 1024,
+  },
+}).fields([
+  { name: 'photo', maxCount: 1 },
+  { name: 'video', maxCount: 1 },
+]);
+
+/**
  * Error handler for multer errors
  */
 export const handleUploadError = (_err: any, _req: Request, res: any, next: any) => {

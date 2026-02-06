@@ -95,10 +95,11 @@ model CitizenProfile {
   
   guardians       Guardian[]
   sosCases        SosCase[]
-  
+  feedbacks       Feedback[]
+
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
-  
+
   @@index([userId])
 }
 
@@ -155,6 +156,8 @@ model AdminProfile {
 
   department      String
   accessLevel     Int       @default(1)
+
+  feedbackReplies FeedbackReply[]
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -235,6 +238,7 @@ model SosCase {
   statusLogs      CaseStatusLog[]
   evidence        Evidence[]
   notifications   Notification[]
+  feedback        Feedback?
   
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -391,4 +395,50 @@ model AuditLog {
   @@index([userId])
   @@index([action])
   @@index([timestamp])
+}
+
+model Feedback {
+  id              String         @id @default(uuid())
+  caseId          String         @unique
+  case            SosCase        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  citizenId       String
+  citizen         CitizenProfile @relation(fields: [citizenId], references: [id])
+
+  text            String
+  resolved        Boolean
+  rating          Int?
+
+  photoUrl        String?
+  photoFileName   String?
+  photoFileSize   Int?
+  videoUrl        String?
+  videoFileName   String?
+  videoFileSize   Int?
+
+  replies         FeedbackReply[]
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([caseId])
+  @@index([citizenId])
+  @@index([createdAt])
+}
+
+model FeedbackReply {
+  id              String       @id @default(uuid())
+  feedbackId      String
+  feedback        Feedback     @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+
+  adminId         String
+  admin           AdminProfile @relation(fields: [adminId], references: [id])
+
+  text            String
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([feedbackId])
+  @@index([adminId])
 }
