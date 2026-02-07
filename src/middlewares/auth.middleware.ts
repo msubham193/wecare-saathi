@@ -46,22 +46,7 @@ export const authenticate = async (
     }
     
     // Verify JWT
-    console.log('\n--- [AUTH DEBUG START] ---');
-    console.log(`1. Token received (len: ${token.length}):`, token.substring(0, 15) + '...');
-    const secret = config.jwt.secret as string;
-    console.log(`2. Secret configured (len: ${secret?.length}):`, secret ? `${secret.substring(0, 3)}...` : 'MISSING');
-
-    let decoded: JWTPayload;
-    try {
-      decoded = jwt.verify(token, secret) as JWTPayload;
-      console.log('3. Token verified successfully. Payload:', JSON.stringify(decoded));
-    } catch (verError: any) {
-      console.error('!!! AUTH FAIL: Token verification failed:', verError.message);
-      if (verError.name === 'JsonWebTokenError') {
-        console.error('JsonWebTokenError details:', verError);
-      }
-      throw verError; // Re-throw to be caught by outer catch
-    }
+    const decoded = jwt.verify(token, config.jwt.secret) as JWTPayload;
     
     // Verify user still exists and is active
     const user = await prisma.user.findUnique({
@@ -73,31 +58,17 @@ export const authenticate = async (
       },
     });
     
-    console.log(`4. DB User lookup for ID ${decoded.userId}:`, user ? `Found (Role: ${user.role})` : 'NOT FOUND');
-
-    if (user) {
-        console.log(`5. User Active Status: ${user.isActive}`);
-    }
-    
     if (!user || !user.isActive) {
-      console.log('!!! AUTH FAIL: User check failed - Not found or Inactive');
       ResponseUtil.unauthorized(res, 'User not found or inactive');
       return;
     }
     
-    console.log('--- [AUTH DEBUG SUCCESS] ---\n');
-
     // Attach user to request
     req.user = user as any;
     
     next();
   } catch (error: any) {
-    console.error('--- [AUTH DEBUG ERROR] ---');
-    console.error('Error Name:', error.name);
-    console.error('Error Message:', error.message);
-
     if (error.name === 'TokenExpiredError') {
-      console.log('!!! AUTH FAIL: TokenExpiredError');
       ResponseUtil.unauthorized(res, 'Token expired');
       return;
     }
